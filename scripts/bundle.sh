@@ -6,10 +6,16 @@ cd "$(dirname "$0")/.."
 # Universal: Apple silicon and Intel, built one at a time because a multi-arch build needs full Xcode.
 swift build -c release
 swift build -c release --triple x86_64-apple-macosx14.0 --scratch-path .build/intel
+# Ask SwiftPM where the binaries are: the output layout differs between toolchain versions.
+ARM=$(swift build -c release --show-bin-path)/Sill
+INTEL=$(swift build -c release --triple x86_64-apple-macosx14.0 --scratch-path .build/intel --show-bin-path)/Sill
+for bin in "$ARM" "$INTEL"; do
+  [ -f "$bin" ] || { echo "Build output not found at $bin. Run swift build -c release and check its errors." >&2; exit 1; }
+done
 APP=dist/Sill.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-lipo -create .build/arm64-apple-macosx/release/Sill .build/intel/x86_64-apple-macosx/release/Sill -output "$APP/Contents/MacOS/Sill"
+lipo -create "$ARM" "$INTEL" -output "$APP/Contents/MacOS/Sill"
 cp brand/Sill.icns "$APP/Contents/Resources/Sill.icns"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
